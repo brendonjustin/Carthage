@@ -175,9 +175,13 @@ public enum VersionSpecifier: VersionType {
 			if let semanticVersion = SemanticVersion.from(version).value {
 				return predicate(semanticVersion)
 			} else {
-				// Consider non-semantic versions (e.g., branches) to meet every
-				// version range requirement.
-				return true
+				if case .any = self {
+					return true
+				} else if case .gitReference(let currentReference) = self {
+					return version.commitish == currentReference
+				} else {
+					return false
+				}
 			}
 		}
 
