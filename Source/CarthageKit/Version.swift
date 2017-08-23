@@ -24,6 +24,8 @@ public struct SemanticVersion: VersionType {
 	///
 	/// Increments to this component represent backwards-compatible bug fixes.
 	public let patch: Int
+	
+	public let trailingModifier: String?
 
 	/// A list of the version components, in order from most significant to
 	/// least significant.
@@ -31,10 +33,11 @@ public struct SemanticVersion: VersionType {
 		return [ major, minor, patch ]
 	}
 
-	public init(major: Int, minor: Int, patch: Int) {
+	public init(major: Int, minor: Int, patch: Int, trailingModifier: String?) {
 		self.major = major
 		self.minor = minor
 		self.patch = patch
+		self.trailingModifier = trailingModifier
 	}
 
 	/// The set of all characters present in valid semantic versions.
@@ -90,18 +93,37 @@ extension SemanticVersion: Scannable {
 		}
 
 		let patch = parseVersion(at: 2) ?? 0
+		
+		var trailingModifier: NSString?
+//		scanner.scanCharacters(from: CharacterSet.whitespacesAndNewlines.inverted, into: &trailingModifier)
 
-		return .success(self.init(major: major, minor: minor, patch: patch))
+		return .success(self.init(major: major, minor: minor, patch: patch, trailingModifier: trailingModifier as String?))
 	}
 }
 
 extension SemanticVersion: Comparable {
 	public static func < (_ lhs: SemanticVersion, _ rhs: SemanticVersion) -> Bool {
-		return lhs.components.lexicographicallyPrecedes(rhs.components)
+		let componentsLess = lhs.components.lexicographicallyPrecedes(rhs.components)
+		
+		guard !componentsLess else {
+			return componentsLess
+		}
+		
+		var trailingModifierLess = false
+		lhsTrailingCondition: if let lhsTrailing = lhs.trailingModifier {
+			guard let rhsTrailing = rhs.trailingModifier else {
+				trailingModifierLess = true
+				break lhsTrailingCondition
+			}
+			
+			trailingModifierLess = lhsTrailing < rhsTrailing
+		}
+		
+		return componentsLess && trailingModifierLess
 	}
 
 	public static func == (_ lhs: SemanticVersion, _ rhs: SemanticVersion) -> Bool {
-		return lhs.components == rhs.components
+		return lhs.components == rhs.components && lhs.trailingModifier == rhs.trailingModifier
 	}
 }
 
